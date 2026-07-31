@@ -1,0 +1,215 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../db/custom.db"
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model HeroSlide {
+  id        String   @id @default(cuid())
+  title     String
+  subtitle  String
+  imageUrl  String
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  imageUrl    String
+  description String   @default("")
+  productCount Int      @default(0)
+  active      Boolean   @default(true)
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  price         Float
+  originalPrice Float?
+  discount      Int?
+  imageUrl      String
+  images        String   @default("[]")
+  description   String   @default("")
+  sizes         String   @default("[]")
+  colors        String   @default("[]")
+  isNew         Boolean  @default(false)
+  isBestseller  Boolean  @default(false)
+  // Per-product purchase perks shown on the storefront under "Add to Cart"
+  freeShipping    Boolean @default(false) // when true -> show "ارسال رایگان"
+  returnGuarantee Boolean @default(false) // when true -> show "۷ روز ضمانت بازگشت"
+  rating        Float    @default(0)
+  reviewCount   Int      @default(0)
+  active        Boolean  @default(true)
+  order         Int      @default(0)
+  categoryId    String
+  category      Category @relation(fields: [categoryId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  text      String
+  rating    Int      @default(5)
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FAQ {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model InstagramImage {
+  id        String   @id @default(cuid())
+  imageUrl  String
+  alt       String   @default("")
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String   @default("")
+  subject   String   @default("")
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model SiteSetting {
+  id    String   @id @default(cuid())
+  key   String   @unique
+  value String   @default("")
+  updatedAt DateTime @updatedAt
+}
+
+model PageContent {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  content   String   @default("")
+  heroTitle String   @default("")
+  heroSubtitle String @default("")
+  active    Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+model FooterServiceItem {
+  id        String   @id @default(cuid())
+  title     String   // H1 page title
+  slug      String   @unique // URL slug used by footer-page route
+  content   String   @default("[]") // JSON array of { title (H3), content } sections
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// E-commerce: Customers, Orders & Order Items (Zarinpal checkout flow)
+// ---------------------------------------------------------------------------
+
+// A storefront customer. Storefront auth itself lives in localStorage, but we
+// persist a Customer row (keyed by email) so orders can be linked to a user.
+model Customer {
+  id        String   @id @default(cuid())
+  name      String   @default("")
+  email     String   @unique
+  phone     String   @default("")
+  // Structured address (never stored as a single comma string)
+  province  String   @default("")
+  city      String   @default("")
+  street    String   @default("")
+  alley     String   @default("")
+  plate     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+model Order {
+  id         String   @id @default(cuid())
+  // Relation to the authenticated customer
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  // Denormalized buyer info captured at checkout time
+  firstName  String   @default("")
+  lastName   String   @default("")
+  email      String   @default("")
+  phone      String   @default("")
+
+  // Structured shipping address (separate fields, not one string)
+  province   String   @default("")
+  city       String   @default("")
+  street     String   @default("")
+  alley      String   @default("")
+  plate      String   @default("")
+
+  totalPrice Float    @default(0)
+
+  // pending | success | failed
+  paymentStatus String @default("pending")
+  // preparing | shipping | delivered
+  orderStatus   String @default("preparing")
+
+  // Zarinpal references
+  authority  String?  @unique
+  refId      String?
+
+  // Nullable shipment tracking code (admin-only, optional)
+  trackingCode String?
+
+  items      OrderItem[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model OrderItem {
+  id          String @id @default(cuid())
+  orderId     String
+  order       Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId   String @default("")
+  productCode String @default("")
+  productName String @default("")
+  // Selected variant captured at checkout time (shown in admin order details)
+  color       String @default("")
+  size        String @default("")
+  quantity    Int    @default(1)
+  price       Float  @default(0)
+  totalPrice  Float  @default(0)
+}
