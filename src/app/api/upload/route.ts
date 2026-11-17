@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
+import { getAuthFromRequest } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
+  // Only authenticated admins may upload files (used by admin panel image pickers).
+  if (!getAuthFromRequest(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -12,8 +18,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'فایلی ارسال نشده است' }, { status: 400 });
     }
 
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+    // Validate file type (SVG removed: it can contain <script> payloads).
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json({ error: 'فرمت فایل پشتیبانی نمی‌شود' }, { status: 400 });
     }
@@ -27,8 +33,9 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes);
 
     // Generate unique filename
-    const ext = path.extname(file.name) || '.png';
-    const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${ext}`;
+    const ext = path.extname(file.name).toLowerCase() || '.png';
+    const safeExt = ['.jpg', '.jpeg', '.png', '.webp', '.gif'].includes(ext) ? ext : '.png';
+    const uniqueName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}${safeExt}`;
 
     // Ensure upload directory exists
     const uploadDir = path.join(process.cwd(), 'public', 'uploads');

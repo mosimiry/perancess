@@ -100,10 +100,17 @@ export async function POST(request: NextRequest) {
     const merchantId = getMerchantId();
 
     // -----------------------------------------------------------------------
-    // 1) FAKE MODE: merchant id not configured yet -> skip Zarinpal entirely.
-    // Create the order already marked as paid and return a relative result URL.
+    // 1) FAKE MODE: only allowed in development, never in production.
     // -----------------------------------------------------------------------
+    const isProduction = process.env.NODE_ENV === 'production';
     if (merchantId === 'YOUR_MERCHANT_ID') {
+      if (isProduction) {
+        return NextResponse.json(
+          { success: false, message: 'درگاه پرداخت هنوز پیکربندی نشده است' },
+          { status: 503 }
+        );
+      }
+
       const order = await db.order.create({
         data: {
           customerId: cust.id,

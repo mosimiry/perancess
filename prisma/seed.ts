@@ -6,14 +6,20 @@ const db = new PrismaClient();
 async function seed() {
   console.log('🌱 Seeding database...');
 
-  // Create admin user
-  const hashedPassword = await hash('admin123', 10);
-  await db.adminUser.upsert({
-    where: { username: 'admin' },
-    update: {},
-    create: { username: 'admin', password: hashedPassword },
-  });
-  console.log('✅ Admin user created (admin / admin123)');
+  // Create admin user -- password comes from the environment so a weak
+  // default ("admin123") never reaches a production database.
+  const initialPassword = process.env.ADMIN_INITIAL_PASSWORD;
+  if (!initialPassword) {
+    console.warn('\n⚠️  ADMIN_INITIAL_PASSWORD is not set; skipping admin user seeding.\n   Set it in your .env (e.g. ADMIN_INITIAL_PASSWORD="some-long-random-secret").\n');
+  } else {
+    const hashedPassword = await hash(initialPassword, 10);
+    await db.adminUser.upsert({
+      where: { username: 'admin' },
+      update: {},
+      create: { username: 'admin', password: hashedPassword },
+    });
+    console.log('✅ Admin user created (username: admin)');
+  }
 
   // Create hero slides
   const slides = [

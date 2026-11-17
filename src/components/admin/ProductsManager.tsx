@@ -322,13 +322,14 @@ export default function ProductsManager({ token }: ProductsManagerProps) {
   const setImages = (list: string[]) => setForm({ ...form, images: JSON.stringify(list) });
 
   const handleAddImage = async (file: File) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowedTypes.includes(file.type)) { alert('فرمت فایل پشتیبانی نمی‌شود'); return; }
     if (file.size > 5 * 1024 * 1024) { alert('حجم فایل نباید بیشتر از ۵ مگابایت باشد'); return; }
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch('/api/upload', { method: 'POST', body: formData, headers });
       if (res.ok) {
         const data = await res.json();
         const list = parseImages(form.images);

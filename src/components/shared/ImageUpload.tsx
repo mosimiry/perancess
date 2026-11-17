@@ -17,7 +17,7 @@ export default function ImageUpload({ value, onChange, label, className = '' }: 
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (file: File) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowedTypes.includes(file.type)) {
       alert('فرمت فایل پشتیبانی نمی‌شود');
       return;
@@ -31,7 +31,10 @@ export default function ImageUpload({ value, onChange, label, className = '' }: 
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
+      const headers: HeadersInit = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const res = await fetch('/api/upload', { method: 'POST', body: formData, headers });
       if (res.ok) {
         const data = await res.json();
         onChange(data.url);
